@@ -1,9 +1,9 @@
 package org.example;
 
-import org.example.controllers.CustomerController;
-import org.example.controllers.HomeController;
+import org.example.system.ApplicationLoader;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -20,7 +20,12 @@ public class Main {
                 body + NEW_LINE + NEW_LINE;
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, ClassNotFoundException {
+
+        ApplicationLoader applicationLoader = new ApplicationLoader();
+        applicationLoader.findAllClasses("org.example");
+
+
         ServerSocket serverSocket = new ServerSocket(1424);
         System.out.println("Server Start");
 
@@ -46,16 +51,19 @@ public class Main {
 //                System.out.println(currentLine);
             }
 
-            if(httpMethod.equals("GET") && httpEndpoint.equals("/home")){
-                HomeController homeController = new HomeController();
-                controllerMessage = homeController.index();
-            }
+            controllerMessage = applicationLoader.executeController(httpMethod, httpEndpoint);
 
-            if(httpMethod.equals("GET") && httpEndpoint.equals("/customer")){
-                CustomerController customerController = new CustomerController();
-                controllerMessage = customerController.index();
-            }
-
+            System.out.println(controllerMessage);
+//            if(httpMethod.equals("GET") && httpEndpoint.equals("/home")){
+//                HomeController homeController = new HomeController();
+//                controllerMessage = homeController.index();
+//            }
+//
+//            if(httpMethod.equals("GET") && httpEndpoint.equals("/customer")){
+//                CustomerController customerController = new CustomerController();
+//                controllerMessage = customerController.index();
+//            }
+//
             response.write(buildHttpResponse(controllerMessage).getBytes());
             request.close();
             response.close();
