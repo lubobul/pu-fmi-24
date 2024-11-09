@@ -1,7 +1,5 @@
 package org.example.system;
-
 import org.example.stereotypes.Controller;
-import org.example.stereotypes.GetMapping;
 
 import java.io.BufferedReader;
 import java.io.IOException;
