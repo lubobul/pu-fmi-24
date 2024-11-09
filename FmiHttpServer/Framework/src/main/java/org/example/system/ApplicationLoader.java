@@ -1,52 +1,36 @@
 package org.example.system;
-import org.example.stereotypes.Controller;
+
+import org.example.entities.ControllerMeta;
+import org.example.entities.RequestInfo;
+import org.example.stereotypes.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Objects;
 
 public class ApplicationLoader {
 
-    public static class RequestInfo {
-        public RequestInfo(String httpMethod, String httpEndpoint) {
-            this.httpMethod = httpMethod;
-            this.httpEndpoint = httpEndpoint;
-        }
-
-        private String httpMethod;
-        private String httpEndpoint;
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(httpMethod, httpEndpoint);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof RequestInfo that)) return false;
-            return Objects.equals(httpMethod, that.httpMethod) && Objects.equals(httpEndpoint, that.httpEndpoint);
-        }
-    }
-
     private ClassLoader classLoader = ClassLoader.getSystemClassLoader();
 
-    private HashMap<RequestInfo, Class> controllerLookUpTable = new HashMap<>();
+    private HashMap<RequestInfo, ControllerMeta> controllerLookUpTable = new HashMap<>();
 
     public String executeController(String httpMethod, String httpEndpoint) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        Class clazz = this.controllerLookUpTable.get(new RequestInfo(httpMethod, httpEndpoint));
+        ControllerMeta controllerMethodRef = this.controllerLookUpTable.get(new RequestInfo(httpMethod, httpEndpoint));
 
-        if(clazz == null){
+        if (controllerMethodRef == null) {
             return "";
         }
 
-        var controllerInstance = clazz.getDeclaredConstructor().newInstance();
+        Class controllerClass = controllerMethodRef.getClassRef();
+        String methodName = controllerMethodRef.getMethodName();
 
-        return (String) clazz.getMethod("index").invoke(controllerInstance);
+        var controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+
+        return (String) controllerClass.getMethod(methodName).invoke(controllerInstance);
     }
 
     public void findAllClasses(String packageName) throws IOException, ClassNotFoundException {
@@ -64,22 +48,89 @@ public class ApplicationLoader {
 
             if (packageRef.contains(".class")) {
 
-                String className = packageRef.replace(".class", "");
-                String classPath = packageName + "." + className;
-                Class clazz = Class.forName(classPath);
-
-                if (clazz.isAnnotationPresent(org.example.stereotypes.Controller.class)) {
-                    Controller controllerAnnotation = (Controller) clazz.getAnnotation(Controller.class);
-
-                    String method = controllerAnnotation.method();
-                    String endpoint = controllerAnnotation.endpoint();
-
-                    this.controllerLookUpTable.put(
-                            new RequestInfo(method, endpoint),
-                            clazz
-                    );
-                }
+                this.classParser(packageRef, packageName);
             }
         }
+    }
+
+    private void classParser(String packageRef, String packageName) throws ClassNotFoundException {
+        String className = packageRef.replace(".class", "");
+        String classPath = packageName + "." + className;
+        Class clazz = Class.forName(classPath);
+
+        if (clazz.isAnnotationPresent(org.example.stereotypes.Controller.class)) {
+            this.parseController(clazz);
+        }
+    }
+
+    private void parseController(Class clazz) {
+
+        Method[] controllerClassMethodCollection = clazz.getMethods();
+
+        for (Method method : controllerClassMethodCollection) {
+            if (method.isAnnotationPresent(org.example.stereotypes.GetMapping.class)) {
+                GetMapping getAnnotation = method.getAnnotation(org.example.stereotypes.GetMapping.class);
+                String methodEndpoint = getAnnotation.value();
+                this.controllerLookUpTable.put(new RequestInfo(
+                        "GET",
+                        methodEndpoint
+                ), new ControllerMeta(
+                        clazz,
+                        method.getName()
+                ));
+            }
+        }
+
+        for (Method method : controllerClassMethodCollection) {
+            if (method.isAnnotationPresent(org.example.stereotypes.PostMapping.class)) {
+                PostMapping getAnnotation = method.getAnnotation(org.example.stereotypes.PostMapping.class);
+                String methodEndpoint = getAnnotation.value();
+                this.controllerLookUpTable.put(new RequestInfo(
+                        "POST",
+                        methodEndpoint
+                ), new ControllerMeta(
+                        clazz,
+                        method.getName()
+                ));
+            }
+        }
+
+        for (Method method : controllerClassMethodCollection) {
+            if (method.isAnnotationPresent(org.example.stereotypes.PutMapping.class)) {
+                PutMapping getAnnotation = method.getAnnotation(org.example.stereotypes.PutMapping.class);
+                String methodEndpoint = getAnnotation.value();
+                this.controllerLookUpTable.put(new RequestInfo(
+                        "PUT",
+                        methodEndpoint
+                ), new ControllerMeta(
+                        clazz,
+                        method.getName()
+                ));
+            }
+        }
+
+        for (Method method : controllerClassMethodCollection) {
+            if (method.isAnnotationPresent(org.example.stereotypes.DeleteMapping.class)) {
+                DeleteMapping getAnnotation = method.getAnnotation(org.example.stereotypes.DeleteMapping.class);
+                String methodEndpoint = getAnnotation.value();
+                this.controllerLookUpTable.put(new RequestInfo(
+                        "DELETE",
+                        methodEndpoint
+                ), new ControllerMeta(
+                        clazz,
+                        method.getName()
+                ));
+            }
+        }
+
+//        Controller controllerAnnotation = (Controller) clazz.getAnnotation(Controller.class);
+//
+//        String method = controllerAnnotation.method();
+//        String endpoint = controllerAnnotation.endpoint();
+//
+//        this.controllerLookUpTable.put(
+//                new RequestInfo(method, endpoint),
+//                clazz
+//        );
     }
 }

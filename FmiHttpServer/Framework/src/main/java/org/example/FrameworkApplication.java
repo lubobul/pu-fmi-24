@@ -10,7 +10,7 @@ import java.net.Socket;
 public class FrameworkApplication {
     private static ApplicationLoader applicationLoader = new ApplicationLoader();
 
-    private static final String NEW_LINE = "\n\r";
+    private static final String NEW_LINE = "\r\n";
 
     public static void run(Class mainClass) {
 
