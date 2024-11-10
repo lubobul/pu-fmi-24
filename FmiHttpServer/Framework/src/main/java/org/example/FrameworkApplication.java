@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.entities.RequestInfo;
 import org.example.system.ApplicationLoader;
 
 import java.io.*;
@@ -34,6 +35,50 @@ public class FrameworkApplication {
         applicationLoader.findAllClasses(mainClass.getPackageName());
     }
 
+    private static RequestInfo parseHttpRequest(InputStream inputStream) throws IOException {
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+        BufferedReader httpRequestReader = new BufferedReader(inputStreamReader);
+
+        String currentLine;
+        boolean isBodyProcessable = false;
+        RequestInfo httpRequestInfo = new RequestInfo();
+
+        while ((currentLine = httpRequestReader.readLine()) != null) {
+
+            if (currentLine.isEmpty()) {
+                isBodyProcessable = true;
+                break;
+            }
+
+            if (!httpRequestInfo.hasMethodAndEndpoint()) {
+                String[] httpHeaderTitleCollection = currentLine.split(" ");
+                httpRequestInfo.setHttpMethod(httpHeaderTitleCollection[0]);
+                httpRequestInfo.setHttpEndpoint(httpHeaderTitleCollection[1]);
+                continue;
+            }
+
+            String[] headerParseCollection = currentLine.split(": ");
+            String headerKey = headerParseCollection[0];
+            String headerValue = headerParseCollection[1];
+
+            httpRequestInfo.setHeader(headerKey, headerValue);
+        }
+
+        if(isBodyProcessable && httpRequestInfo.hasBodyContent()){
+
+            int contentLength = httpRequestInfo.getContentLength();
+            char[] bodyCharacterCollection = new char[contentLength];
+            httpRequestReader.read(bodyCharacterCollection, 0, contentLength);
+
+            StringBuilder bodyBuilder = new StringBuilder();
+            bodyBuilder.append(bodyCharacterCollection);
+
+            httpRequestInfo.setBody(bodyBuilder.toString());
+        }
+
+        return httpRequestInfo;
+    }
+
     private static void startWebServer() throws
             IOException,
             InvocationTargetException,
@@ -48,23 +93,9 @@ public class FrameworkApplication {
             InputStream request = connectionSocket.getInputStream();
             OutputStream response = connectionSocket.getOutputStream();
 
-            InputStreamReader inputStreamReader = new InputStreamReader(request);
-            BufferedReader httpRequestReader = new BufferedReader(inputStreamReader);
+            var httpRequest = parseHttpRequest(request);
 
-            String currentLine;
-            String httpMethod = null;
-            String httpEndpoint = null;
-
-            String controllerMessage = null;
-
-            while ((currentLine = httpRequestReader.readLine()) != null) {
-                String[] httpHeaderTitleCollection = currentLine.split(" ");
-                httpMethod = httpHeaderTitleCollection[0];
-                httpEndpoint = httpHeaderTitleCollection[1];
-                break;
-            }
-
-            controllerMessage = applicationLoader.executeController(httpMethod, httpEndpoint);
+            String controllerMessage = applicationLoader.executeController(httpRequest);
 
             System.out.println(controllerMessage);
 

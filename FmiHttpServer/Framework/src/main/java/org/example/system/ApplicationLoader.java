@@ -18,8 +18,12 @@ public class ApplicationLoader {
 
     private HashMap<RequestInfo, ControllerMeta> controllerLookUpTable = new HashMap<>();
 
-    public String executeController(String httpMethod, String httpEndpoint) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        ControllerMeta controllerMethodRef = this.controllerLookUpTable.get(new RequestInfo(httpMethod, httpEndpoint));
+    public String executeController(RequestInfo requestInfo) throws
+            NoSuchMethodException,
+            InvocationTargetException,
+            InstantiationException,
+            IllegalAccessException {
+        ControllerMeta controllerMethodRef = this.controllerLookUpTable.get(new RequestInfo(requestInfo.getHttpMethod(), requestInfo.getHttpEndpoint()));
 
         if (controllerMethodRef == null) {
             return "";
@@ -122,15 +126,5 @@ public class ApplicationLoader {
                 ));
             }
         }
-
-//        Controller controllerAnnotation = (Controller) clazz.getAnnotation(Controller.class);
-//
-//        String method = controllerAnnotation.method();
-//        String endpoint = controllerAnnotation.endpoint();
-//
-//        this.controllerLookUpTable.put(
-//                new RequestInfo(method, endpoint),
-//                clazz
-//        );
     }
 }
